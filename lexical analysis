@@ -1,0 +1,212 @@
+// 关键字:if,then,else,while,do
+// 标识符:字母/下划线+字母/下划线/数字 
+// 常数:1/2/3/4/5/6/7/8/9+0/1/2/3/4/5/6/7/8/9 
+// 运算符:+,-,*,/,>,<,=,==,<=,>=,!= 
+// 分隔符:,,(,),;
+// id -> Letter <temp> 
+// int10 -> Num int10 | Num 
+// OP -> + | - | * | / | > | < | = | ( | ) | ; | ' | == | >= | <= | !=
+// Keyword -> if | then | else | while | do 
+// Letter -> a|b|c|d|e|f|g|i|j|k|l|m|n|o|p|q|r|s|t|u|v|w|x|y|z|A|B|C|D|E|F|G|H|I|J|K|L|M|N|O|P|Q|R|S|T|U|V|W|X|Y|Z
+// Num -> 0|1|2|3|4|5|6|7|8|9|ε
+// <temp> -> Letter <temp> | Num <temp> | ε
+// 符号表条目:一个符号和一个值 
+// 每一类中的flag变量用于发现当前的内容有没有错误.即使发生错误,也继续读取,但是不写入符号表,并指出错误原因 
+
+#include<iostream>
+#include<string>
+using namespace std;
+
+typedef struct{
+	string type;
+	string value;
+}table;
+
+char program[500];
+
+string KEYWORD[]={"int","double","char","if","else","while","do","main","return"};
+string OPERATOR[]={"+","-","*","/",">","<","=","%","&","|","==",">=","<=","!="};
+char DIVIDE[]={',','(',')','{','}',';','[',']'};
+char Letter[]={'a','b','c','d','e','f','g','h','i','j','k','l','m','n','o','p','q','r','s','t','u','v','w','x','y','z',
+			   'A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','Q','R','S','T','U','V','W','X','Y','Z'};
+char Number[]={'0','1','2','3','4','5','6','7','8','9'};
+
+table keyword_table[100]; // 关键字表 
+table operator_table[100]; // 运算符号表
+table divide_table[100]; // 分隔符表
+table flag_table[100]; // 标识符表
+table constant_table[100]; // 常数表 
+int keyword_count,operator_count,divide_count,flag_count,constant_count=0;
+
+int isChar(char ch) {
+	for(int i=0;i<sizeof(Letter)/sizeof(Letter[0]);i++) {
+		if(ch==Letter[i]) return 1;
+	}
+	return 0;
+} 
+
+int isNumber(char ch) {
+	for(int i=0;i<sizeof(Number)/sizeof(Number[0]);i++) {
+		if(ch==Number[i]) return 1;
+	}
+	return 0;
+}
+
+int isDivide(char ch) {
+	for(int i=0;i<sizeof(DIVIDE)/sizeof(DIVIDE[0]);i++) {
+		if(ch==DIVIDE[i]) return 1;
+	}
+	return 0;
+}
+
+int isOperator(char ch) {
+	if(ch=='+' || ch=='-' || ch=='*' || ch=='/' || ch=='>' || ch=='<' || ch=='=' || ch=='!') return 1;
+	return 0;
+}
+
+int isKeyword(string ch) {
+	for(int i=0;i<sizeof(KEYWORD)/sizeof(KEYWORD[0]);i++) {
+		if(ch==KEYWORD[i]) return 1;
+	}
+	return 0;
+}
+
+int KeywordFlag(int index) {
+	int flag=0;
+	string sentense("");
+	sentense=sentense+program[index]; 
+	for(int i=index+1;;i++) {
+		// 遇到分隔符或空格或计算符号或程序末尾,这个词就将结束读入,开始识别下一个词
+		if(program[i]!=' ' && isDivide(program[i])!=1 && isOperator(program[i])!=1 && program[i]!='@') {
+			// 关键字和标识符中只允许出现数字字母下划线,其余都报错
+			if(isChar(program[i])==1 || isNumber(program[i])==1 || program[i]=='_') {  
+				sentense=sentense+program[i]; 
+			}
+			// 如果发现标识符中出现违禁字符,则提示错误
+			else {
+				flag=1;
+				sentense=sentense+program[i]; 
+			}
+		} 
+		// 读词结束,开始判断是关键词还是标识符 
+		else {
+			// 是关键字 
+			if(isKeyword(sentense)==1) {
+				keyword_table[keyword_count].type="KeyWord";
+				keyword_table[keyword_count].value=sentense;
+				keyword_count++;
+				cout<<"<关键字  "<<sentense<<">"<<endl;
+			}
+			// 是标识符 
+			else {
+				if(flag==0) {
+					flag_table[flag_count].type="Flag";
+					flag_table[flag_count].value=sentense;
+					flag_count++;
+					cout<<"<标识符  "<<sentense<<">"<<endl;
+				}
+				else {
+					cout<<"Error:在标识符"<<sentense<<"定义中出现非法字符."<<endl;
+				}
+			}
+			return i; // 返回下一个要读取的词的首字符 
+		} 
+	}
+}
+
+int Operator(int index) {
+	string sentense("");
+	sentense=sentense+program[index];  
+	for(int i=index+1;;i++) {
+		// 计算符号遇到数字,字母,空格或者程序末尾都会结束,且长度>1的计算符号都是2位,第二位一定是= 
+		if(program[i]=='=') 
+			sentense=sentense+program[i];
+		// 结束读入,返回计算符号 
+		else {
+			operator_table[operator_count].type="Operator";
+			operator_table[operator_count].value=sentense;
+			operator_count++;
+			cout<<"<计算符号  "<<sentense<<">"<<endl;
+			return i;
+		} 
+	}
+} 
+
+int Constant(int index) {
+	int count=0;
+	int flag=0;
+	string sentense("");
+	sentense=sentense+program[index];  
+	for(int i=index+1;;i++) {
+		// 数字只有遇到数字或小数点才会持续增长,遇到其它的全部停止 
+		if(isNumber(program[i])==1 || program[i]=='.') {
+			sentense=sentense+program[i];
+			if(program[i]=='.') { // 首次出现小数点可以成立,但是小数点出现多次就是错误 
+				count++;
+			} 
+		}		
+		// 结束读入,返回常数值
+		else if(isChar(program[i])==1 || program[i]=='_') {
+			sentense=sentense+program[i];
+			flag=1;
+		}
+		else {
+			if(count>1 || flag==1) {
+				if(count>1) cout<<"Error:常数表达式"<<sentense<<"中出现多个小数点."<<endl;
+				else cout<<"Error:标识符"<<sentense<<"不能以数字开头."<<endl; 
+			}
+			else {
+				constant_table[constant_count].type="Constant";
+				constant_table[constant_count].value=sentense;
+				constant_count++;
+				cout<<"<常数  "<<sentense<<">"<<endl;
+			}
+			return i;
+		} 
+	}
+}
+
+// 预处理:去除所有的空格,换行符和制表符 
+void Scan() {
+	int index=0;
+	char temp;
+	// 在达到程序末尾之前持续遍历 
+	while((temp=program[index])!='@') {
+		// 如果读到空格或换行符或制表符,直接跳过继续读下一个 
+		if(temp==' ' || temp=='\n' || temp=='\t') {
+			index++;
+			continue;
+		}
+		else {
+			if(isChar(temp)==1) { // 如果是字母,那是关键字或标识符
+				index=KeywordFlag(index);
+			}
+			else if(temp=='+' || temp=='-' || temp=='*' || temp=='/' || temp=='>' || temp=='<' || temp=='=' || temp=='!' || temp=='%' || temp=='&' || temp=='|') { // 如果是操作符,那是运算符号
+				index=Operator(index);
+			}
+			else if(isNumber(temp)==1) { // 如果是数字,那是常数
+				index=Constant(index);
+			}
+			else if(temp=='(' || temp==')' || temp==',' || temp=='{' || temp=='}' || temp=='[' || temp==']' || temp==';') { // 如果是括号或分号,那是分隔符
+				divide_table[divide_count].type="Divide";
+				divide_table[divide_count].value=temp;
+				divide_count++;
+				cout<<"<分隔符  "<<temp<<">"<<endl;
+				index++;
+			} 
+		}
+	}
+}
+
+int main() { 
+	int i=0; 
+	char ch;
+	while((ch=getchar())!='@') {
+		program[i]=ch;
+		i++; 
+	}  
+	program[i]='@';
+	Scan();
+	system("pause");
+	return 0;
+}
